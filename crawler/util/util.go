@@ -1,4 +1,4 @@
-package utils
+package util
 
 import (
 	"fmt"
@@ -20,7 +20,7 @@ func ExtractSiteURLs(url string, domainName string) []string {
 			document, err := goquery.NewDocumentFromReader(response.Body)
 			if err == nil {
 				documentLinks = scrapeDocumentForLinks(document, domainName)
-				fmt.Printf("url:%s,\n urls:%v\n\n", url, documentLinks)
+				//	fmt.Printf("url:%s,\n urls:%v\n\n", url, documentLinks)
 			} else {
 				printError("When trying to find links", url)
 			}
