@@ -47,15 +47,15 @@ func PrintTimeInReadableFormat(elapsedTime time.Duration) {
 
 }
 
-func TestNoDuplicateUrlInMap(url string, mapUrls map[string][]string) {
+func TestNoDuplicateUrlInMap(domainUrl string, mapUrls map[string][]string) {
 	//THIS IS FOR SEEING IF THE URL IS ONLY SHOWN ONICE IN THE MAP
 	counter := 0
 	for tempUrl, _ := range mapUrls {
-		if tempUrl == url {
+		if tempUrl == domainUrl {
 			counter++
 		}
 		if counter > 1 {
-			printError("Error The url is inside the map more then once ", url)
+			printError("Error The url is inside the map more then once ", domainUrl)
 			log.Fatal("Fix this error")
 		}
 	}

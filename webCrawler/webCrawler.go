@@ -1,27 +1,27 @@
-package webCrawl
+package webCrawler
 
 import (
 	"fmt"
 	"sync"
 	"time"
-	"webScraping/crawler/util"
+	"webScraping/webCrawler/util"
 )
 
-type crawler interface {
+type Crawler interface {
 	StartWebCrawlOnSiteUrl(string) map[string][]string
 	GetStartUrl() string
 	GetMapUrls() map[string][]string
 }
 
 type webCrawler struct {
-	domainName    string
-	functionMutex sync.Mutex
-	someMapMutex  sync.RWMutex
-	mapUrls       map[string][]string
-	wg            sync.WaitGroup
+	domainUrl     string              `json:"-"`
+	functionMutex sync.Mutex          `json:"-"`
+	someMapMutex  sync.RWMutex        `json:"-"`
+	mapUrls       map[string][]string `json:"urls ,Omitempty"`
+	wg            sync.WaitGroup      `json:"-"`
 }
 
-func NewCrawler() crawler {
+func NewCrawler() Crawler {
 	return &webCrawler{"", sync.Mutex{}, sync.RWMutex{}, make(map[string][]string), sync.WaitGroup{}}
 }
 
@@ -30,12 +30,12 @@ func (wb *webCrawler) GetMapUrls() map[string][]string {
 }
 
 func (wb *webCrawler) GetStartUrl() string {
-	return wb.domainName
+	return wb.domainUrl
 }
 
 func (wb *webCrawler) StartWebCrawlOnSiteUrl(url string) map[string][]string {
 	fmt.Printf("Started to web crawl %s domain\n", url)
-	wb.domainName = url
+	wb.domainUrl = url
 	startTime := time.Now()
 	wb.crawlWebSite(url)
 	wb.wg.Wait()
@@ -50,14 +50,14 @@ func (wb *webCrawler) StartWebCrawlOnSiteUrl(url string) map[string][]string {
 
 	// 	utils.TestNoDuplicateUrlInMap(url, wb.mapUrls)
 	// }
-
+	util.TestNoDuplicateUrlInMap(wb.domainUrl, wb.mapUrls)
 	return wb.mapUrls
 }
 
 func (wb *webCrawler) crawlWebSite(crawlUrl string) {
 	wb.wg.Add(1)
 	defer wb.wg.Done()
-	wb.changeMapValue(crawlUrl, util.ExtractSiteURLs(crawlUrl, wb.domainName))
+	wb.changeMapValue(crawlUrl, util.ExtractSiteURLs(crawlUrl, wb.domainUrl))
 	for _, url := range wb.mapUrls[crawlUrl] {
 		wb.someMapMutex.RLock()
 		_, ok := wb.mapUrls[url]
