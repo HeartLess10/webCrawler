@@ -1,7 +1,9 @@
 package webCrawler
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"sync"
 	"time"
 	"webScraping/webCrawler/util"
@@ -9,15 +11,15 @@ import (
 
 type Crawler interface {
 	StartWebCrawlOnSiteUrl(string) map[string][]string
-	GetStartUrl() string
-	GetMapUrls() map[string][]string
+	GetDomainUrl() string
+	ToJson(io.Writer) error
 }
 
 type webCrawler struct {
-	domainUrl     string              `json:"-"`
+	domainUrl     string              `json:"-"` //there is no need for json - becuse the field is not exported
 	functionMutex sync.Mutex          `json:"-"`
 	someMapMutex  sync.RWMutex        `json:"-"`
-	mapUrls       map[string][]string `json:"urls ,Omitempty"`
+	MapUrls       map[string][]string `json:"mapUrls ,Omitempty"`
 	wg            sync.WaitGroup      `json:"-"`
 }
 
@@ -25,52 +27,53 @@ func NewCrawler() Crawler {
 	return &webCrawler{"", sync.Mutex{}, sync.RWMutex{}, make(map[string][]string), sync.WaitGroup{}}
 }
 
-func (wb *webCrawler) GetMapUrls() map[string][]string {
-	return wb.mapUrls
+func (wc *webCrawler) GetDomainUrl() string {
+	return wc.domainUrl
 }
 
-func (wb *webCrawler) GetStartUrl() string {
-	return wb.domainUrl
-}
-
-func (wb *webCrawler) StartWebCrawlOnSiteUrl(url string) map[string][]string {
+func (wc *webCrawler) StartWebCrawlOnSiteUrl(url string) map[string][]string {
 	fmt.Printf("Started to web crawl %s domain\n", url)
-	wb.domainUrl = url
+	wc.domainUrl = url
 	startTime := time.Now()
-	wb.crawlWebSite(url)
-	wb.wg.Wait()
+	wc.crawlWebSite(url)
+	wc.wg.Wait()
 
 	endTime := time.Now()
 	elapsedTime := endTime.Sub(startTime)
 	util.PrintTimeInReadableFormat(elapsedTime)
 	fmt.Printf("Finshed web crawling %s domain\n", url)
 	// fmt.Println("Finshed crawling all the links:")
-	// for url, _ := range wb.mapUrls {
+	// for url, _ := range wc.mapUrls {
 	// 	fmt.Printf("%s   ,", url)
 
-	// 	utils.TestNoDuplicateUrlInMap(url, wb.mapUrls)
+	// 	utils.TestNoDuplicateUrlInMap(url, wc.mapUrls)
 	// }
-	util.TestNoDuplicateUrlInMap(wb.domainUrl, wb.mapUrls)
-	return wb.mapUrls
+	util.TestNoDuplicateUrlInMap(wc.domainUrl, wc.MapUrls)
+	return wc.MapUrls
 }
 
-func (wb *webCrawler) crawlWebSite(crawlUrl string) {
-	wb.wg.Add(1)
-	defer wb.wg.Done()
-	wb.changeMapValue(crawlUrl, util.ExtractSiteURLs(crawlUrl, wb.domainUrl))
-	for _, url := range wb.mapUrls[crawlUrl] {
-		wb.someMapMutex.RLock()
-		_, ok := wb.mapUrls[url]
-		wb.someMapMutex.RUnlock()
+func (wc *webCrawler) crawlWebSite(crawlUrl string) {
+	wc.wg.Add(1)
+	defer wc.wg.Done()
+	wc.changeMapValue(crawlUrl, util.ExtractSiteURLs(crawlUrl, wc.domainUrl))
+	for _, url := range wc.MapUrls[crawlUrl] {
+		wc.someMapMutex.RLock()
+		_, ok := wc.MapUrls[url]
+		wc.someMapMutex.RUnlock()
 		if !ok {
-			wb.changeMapValue(url, nil)
-			go wb.crawlWebSite(url)
+			wc.changeMapValue(url, nil)
+			go wc.crawlWebSite(url)
 		}
 	}
 }
 
-func (wb *webCrawler) changeMapValue(key string, value []string) {
-	wb.someMapMutex.Lock()
-	wb.mapUrls[key] = value
-	wb.someMapMutex.Unlock()
+func (wc *webCrawler) changeMapValue(key string, value []string) {
+	wc.someMapMutex.Lock()
+	wc.MapUrls[key] = value
+	wc.someMapMutex.Unlock()
+}
+
+func (wc *webCrawler) ToJson(w io.Writer) error {
+	ecoder := json.NewEncoder(w)
+	return ecoder.Encode(wc)
 }

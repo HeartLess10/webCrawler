@@ -1,5 +1,5 @@
 package DTOs
 
 type CrawlUrlDto struct {
-	Url string
+	Url string `json:"url"`
 }
